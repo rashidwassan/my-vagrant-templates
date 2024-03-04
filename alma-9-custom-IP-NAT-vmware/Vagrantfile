@@ -1,0 +1,43 @@
+# This Vagrantfile deploys a virtual machine using a NAT network and custom IP and is ready to access via SSH.
+
+Vagrant.configure("2") do |config|
+    config.vm.provider "vmware_desktop" do |v|
+      v.vmx["memsize"] = "4096"
+      v.vmx["numvcpus"] = "4"
+      v.gui = true
+    end
+  
+    # Define the VM configuration
+    config.vm.define "almalinux" do |node1|
+      node1.vm.box = "almalinux/9"
+      # Using custom mac as required for adding custom IP addresses.
+      # Make sure both are unique and not already in use.
+      node1.vm.base_mac = "00:0c:29:c1:b1:0d"
+      node1.vm.base_address = "192.168.157.99"
+      # Set root password to 'almalinux'
+      node1.vm.provision "shell", inline: "echo 'root:almalinux' | chpasswd"
+      node1.vm.provision "shell", inline: <<-SHELL
+      useradd -m -s /bin/bash alma5
+      echo 'alma5:alma5' | chpasswd
+      usermod -aG wheel alma5
+      mkdir -p /home/alma5/.ssh
+      wget --no-check-certificate https://raw.githubusercontent.com/hashicorp/vagrant/main/keys/vagrant.pub -O /home/alma5/.ssh/authorized_keys
+      chmod 600 /home/alma5/.ssh/authorized_keys
+      chmod 700 /home/alma5/.ssh
+      chown -R alma5:alma5 /home/alma5/.ssh
+      sudo dnf install net-tools -y
+    SHELL
+  
+#       # Enable SSH and configure for passwordless login with Vagrant's insecure private key
+#       node1.vm.provision "shell", inline: <<-SHELL
+#         yum install -y openssh-server
+#         systemctl enable sshd
+#         systemctl start sshd
+#         mkdir -p /root/.ssh
+#         wget --no-check-certificate https://raw.githubusercontent.com/hashicorp/vagrant/main/keys/vagrant -O /root/.ssh/id_rsa
+#         chmod 600 /root/.ssh/id_rsa
+#         echo "StrictHostKeyChecking no" >> /root/.ssh/config
+#       SHELL
+
+    end
+  end
